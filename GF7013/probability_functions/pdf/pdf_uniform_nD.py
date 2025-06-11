@@ -132,7 +132,7 @@ class pdf_uniform_nD(pdf_base):
             return  self._likelihood(x) * self.normalization
 
     ####
-    def _draw(self, Ns):
+    def _draw(self, Ns = None):
         """
         produces numpy array with Ns realizations of the probability distribution.
         If Ns is None, returns a 1D numpy array with the shape of self.ll .

@@ -48,5 +48,10 @@ class forward(object):
 
         # calculate the predicted points in the straight line
         dpred = recta.calc_xy_pred(a, theta, self.x_obs, self.y_obs)
-
         return dpred
+    def deltas(self,m):
+        """
+        Return the dist
+        """
+        deltas, sigma_deltas, s, e_x, e_y = recta.calc_dist_sigma(m, self.x_obs, self.y_obs, self.sigma_x, self.sigma_y)
+        return deltas,sigma_deltas
