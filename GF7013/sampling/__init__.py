@@ -8,9 +8,9 @@ Departamento de Geofísica - FCFM
 Universidad de Chile
 
 """
-from . import rejection
+# from . import rejection
 from . import metropolis
 from . import metropolis_in_parallel
-from . import resampling
-from . import tmcmc
-from . import catmip
+# from . import resampling
+# from . import tmcmc
+# from . import catmip
