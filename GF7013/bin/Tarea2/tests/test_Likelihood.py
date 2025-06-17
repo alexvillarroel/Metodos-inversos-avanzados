@@ -93,7 +93,7 @@ par = {'mu': mu, 'cov': cov}
 likelihood_func = likelihood_function(forward_model, pdf_normal(par=par, rng=rng))
 
 for i, model in enumerate(m_posible_values):
-    model = model.tolist()
+    model = np.array(model)
     likelihood_f_prior[i] = f_prior._likelihood(model)
     likelihood[i] = likelihood_func.likelihood(model)
     likelihood_f_posterior[i] = likelihood_f_prior[i] * likelihood[i]
