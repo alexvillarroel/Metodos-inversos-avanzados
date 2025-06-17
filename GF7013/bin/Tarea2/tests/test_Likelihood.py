@@ -11,6 +11,7 @@ from GF7013.model_parameters.ensemble import ensemble
 from GF7013.probability_functions.pdf import pdf_uniform_nD,pdf_normal
 from GF7013.probability_functions.likelihood.likelihood_function import likelihood_function
 from GF7013.models.ajuste_ortogonal_recta.forward import forward
+from GF7013.models.ajuste_ortogonal_recta.recta import calc_dist_sigma
 
 
 # Generar datos sinteticos
@@ -42,6 +43,7 @@ ll_theta, ul_theta = -180,180
 lower_lim = np.array([ll_a,ll_theta])
 upper_lim = np.array([ul_a,ul_theta])
 
+
 # Valores de la grilla
 
 theta_values = np.linspace(ll_theta, ul_theta, 100)
@@ -50,70 +52,71 @@ a_values = np.linspace(ll_a, ul_a, 100)
 Nmodels = len(theta_values) * len(a_values)
 Npar=2
 
-a_grid,theta_grid = np.meshgrid(a_values,theta_values, indexing='ij')
+a_grid,theta_grid = np.meshgrid(a_values,theta_values)
 m_posible_values = np.column_stack([a_grid.ravel(),theta_grid.ravel()])
 
 
 # Forward model
-forward_model = forward(x_obs, y_obs, sigma_x, sigma_y)
-from GF7013.models.ajuste_ortogonal_recta.recta import calc_dist_sigma
-dist=np.zeros((len(m_posible_values),N))
-deltas = np.zeros((len(m_posible_values),N))
+# forward_model = forward(x_obs, y_obs, sigma_x, sigma_y)
+# dist=np.zeros((len(m_posible_values),N))
+# deltas = np.zeros((len(m_posible_values),N))
 
-for i,m_value in enumerate(m_posible_values):
-    dist[i,:],deltas[i,:],_,_,_ =calc_dist_sigma(m_value, x_obs, y_obs, sigma_x, sigma_y)
+# for i,m_value in enumerate(m_posible_values):
+#     dist[i,:],deltas[i,:],_,_,_ =calc_dist_sigma(m_value, x_obs, y_obs, sigma_x, sigma_y)
 
-print(np.shape(dist),np.shape(deltas))
-
-# f_priori
-
-# likelihood
+# print(np.shape(dist),np.shape(deltas))
+par = {'lower_lim': lower_lim, 'upper_lim': upper_lim}
 LogOfZero = None
-rng = np.random.default_rng(66)
-rng_uniform = np.random.default_rng(77)
-# par
-likelihood=np.zeros(Nmodels)
-#
-likelihood_f_prior=np.zeros(Nmodels)
-# a posteriori
-likelihood_f_posterior= np.zeros(Nmodels)
-#### log_likelihood
-# par
-loglikelihood=np.zeros(Nmodels)
-#
-loglikelihood_f_prior=np.zeros(Nmodels)
-# a posteriori
-loglikelihood_f_posterior= np.zeros(Nmodels)
+rng_uni = np.random.default_rng(66)
+f_prior = pdf_uniform_nD(par=par, LogOfZero=LogOfZero, rng=rng_uni)
 
-for i,m_value in enumerate(m_posible_values):
-    mu = np.zeros(N)
-    x = dist[i,:]
-    cov = np.diag(deltas[i,:])
-    par = {'mu': mu, 'cov': cov}
-    par_uniform = {'lower_lim':lower_lim,'upper_lim':upper_lim}
-    likelihood_f_prior[i] = pdf_uniform_nD(par = par_uniform,rng=rng_uniform)._likelihood(m_value)
-    likelihood[i] = pdf_normal(par,rng=rng)._likelihood(x)
+# Forward model
+forward_model = forward(x_obs, y_obs, sigma_x, sigma_y)
+
+# Likelihood function
+LogOfZero = None
+rng = np.random.default_rng(777)
+
+likelihood=np.zeros(Nmodels)
+likelihood_f_prior=np.zeros(Nmodels)
+likelihood_f_posterior= np.zeros(Nmodels)
+
+# Log likelihood
+loglikelihood = np.zeros(Nmodels)
+loglikelihood_f_prior = np.zeros(Nmodels)
+loglikelihood_f_posterior = np.zeros(Nmodels)
+
+mu = np.zeros(N)
+cov = np.eye(N)
+
+par = {'mu': mu, 'cov': cov}
+likelihood_func = likelihood_function(forward_model, pdf_normal(par=par, rng=rng))
+
+for i, model in enumerate(m_posible_values):
+    model = model.tolist()
+    likelihood_f_prior[i] = f_prior._likelihood(model)
+    likelihood[i] = likelihood_func.likelihood(model)
     likelihood_f_posterior[i] = likelihood_f_prior[i] * likelihood[i]
-    #
-    loglikelihood_f_prior[i] = pdf_uniform_nD(par = par_uniform,rng=rng_uniform)._log_likelihood(m_value)
-    loglikelihood[i] = pdf_normal(par,rng=rng)._log_likelihood(x)
+    
+    # Log likelihood
+    loglikelihood_f_prior[i] = f_prior._log_likelihood(model)
+    loglikelihood[i] = likelihood_func.log_likelihood(model)
     loglikelihood_f_posterior[i] = loglikelihood_f_prior[i] + loglikelihood[i]
 
+# Create ensemble objects
+ensamble = ensemble(Npar = Npar, Nmodels = Nmodels, use_log_likelihood=False)
 
-
-ensamble = ensemble(Npar=Npar,Nmodels=Nmodels,use_log_likelihood=False)
-
-ensamble.fprior=likelihood_f_prior
-ensamble.like=likelihood
+ensamble.fprior = likelihood_f_prior
+ensamble.like = likelihood
 ensamble.f = likelihood_f_posterior
 
 ensamble_log = ensemble(Npar=Npar,Nmodels=Nmodels,use_log_likelihood=True)
 
-ensamble_log.fprior=loglikelihood_f_prior
-ensamble_log.like=loglikelihood
+ensamble_log.fprior = loglikelihood_f_prior
+ensamble_log.like = loglikelihood
 ensamble_log.f = loglikelihood_f_posterior
 
-
+# 
 
 # plot
 # fig,axs= plt.subplots(nrows=3,ncols=2)
