@@ -9,9 +9,9 @@ GF7013 - Metodos Inversos Avanzados
 Departamento de Geofisica - FCFM - Universidad de Chile 
 
 """
-COMPLETAR = None
 import numpy as np
 from ...model_parameters import ensemble
+from GF7013.probability_functions.pdf import pdf_uniform_nD
 
 def metropolis(m0, likelihood_fun, pdf_prior, proposal, num_samples, num_burnin, 
                use_log_likelihood = True, save_samples = True, beta = 1,
@@ -76,7 +76,6 @@ def metropolis(m0, likelihood_fun, pdf_prior, proposal, num_samples, num_burnin,
     if LogOfZero is None:
         LogOfZero = -np.finfo(float).max * (np.finfo(float).eps**2)
     
-
     if save_samples:
         # initialize container to save the samples
         samples = ensemble(Npar= len(m0), Nmodels= num_samples, 
@@ -99,8 +98,7 @@ def metropolis(m0, likelihood_fun, pdf_prior, proposal, num_samples, num_burnin,
         acceptance_criteria = __acceptance_criteria_likelihood
         # define how to compute posterior likelihood
         fpost = _fpost
-
-    
+        
     # evaluate pdf on initial model
     m = m0
     fm_prior = fprior(m)
@@ -140,18 +138,18 @@ def metropolis(m0, likelihood_fun, pdf_prior, proposal, num_samples, num_burnin,
             accept = acceptance_criteria(fm_test= fm_post_test, fm= fm_post)
 
             if accept:
-                m = COMPLETAR
-                fm_prior = COMPLETAR
-                fm_like = COMPLETAR
-                fm_post = COMPLETAR
+                m = m_test
+                fm_prior = fm_prior_test
+                fm_like = fm_like_test
+                fm_post = fm_post_test
                 num_accepted_transitions += 1
         # save samples after burn-in period if requested to do so
         if save_samples:
             if k >= num_burnin:
-                samples.m_set[k - num_burnin,:] = COMPLETAR
-                samples.fprior[k - num_burnin] = COMPLETAR
-                samples.like[k - num_burnin] = COMPLETAR
-                samples.f[k - num_burnin] = COMPLETAR
+                samples.m_set[k - num_burnin,:] = m
+                samples.fprior[k - num_burnin] = fm_prior
+                samples.like[k - num_burnin] = fm_like
+                samples.f[k - num_burnin] = fm_post
 
     # compute acceptance ratio of the MCMC chain
     acceptance_ratio = num_accepted_transitions/num_iterations
@@ -172,13 +170,21 @@ def __acceptance_criteria_likelihood(fm, fm_test):
     Returns True if model is accepted, False if not.
     """
     # if likelihood of m_test is larger, do accept.
-    accept = COMPLETAR
+    if fm_test > fm:
+        accept = True
+    else:
+        accept = False
+
     # if likelihood is smaller, accept with probability Pac = fm_test/fm
     if not(accept):
-        u = COMPLETAR
-        if COMPLETAR:
+        uniform_pdf = pdf_uniform_nD(par = {'lower_lim': np.array([0.0]), 'upper_lim': np.array([1.0])}, 
+                                  LogOfZero = None, rng = None)
+
+        u = uniform_pdf._draw(Ns = None)  # draw a uniform random number in [0,1]
+
+        if (fm_test / fm) >= u:
             accept = True
-    
+
     return accept
 
 def __acceptance_criteria_log_likelihood(fm, fm_test):
@@ -188,11 +194,17 @@ def __acceptance_criteria_log_likelihood(fm, fm_test):
     Returns True if model is accepted, False if not.
     """
     # if likelihood of m_test is larger, do accept.
-    accept = COMPLETAR
+    if fm_test > fm:
+        accept = True
+    else:
+        accept = False
     # if likelihood is smaller, accept with probability Pac = fm_test/fm
     if not(accept):
-        u = COMPLETAR
-        if COMPLETAR:
+        uniform_pdf = pdf_uniform_nD(par = {'lower_lim': np.array([0.0]), 'upper_lim': np.array([1.0])}, 
+                                  LogOfZero = None, rng = None)
+        u = uniform_pdf._draw(Ns = None)
+
+        if fm_test - fm >= np.log(u):
             accept = True
     
     return accept
