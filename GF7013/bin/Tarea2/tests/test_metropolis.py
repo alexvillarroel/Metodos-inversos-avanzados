@@ -7,8 +7,9 @@ GF7013_path = os.path.abspath(os.path.join(this_module_folder, '../../../..'))
 sys.path.append(GF7013_path)
 
 from GF7013.model_parameters import ensemble
-from GF7013.sampling.metropolis import metropolis, proposal
-from GF7013.sampling import probability_distributions as pdfs
+from GF7013.sampling.metropolis import metropolis
+from GF7013.sampling.metropolis import proposal_normal as proposal
+from GF7013.probability_functions.pdf import pdf_uniform_nD
 
 import numpy as NP
 import matplotlib.pyplot as plt
@@ -61,13 +62,13 @@ if __name__ == '__main__':
     prior_pdf_pars = {}
     prior_pdf_pars['lower_lim'] = NP.array([x_min_ini])
     prior_pdf_pars['upper_lim'] = NP.array([x_max_ini])
-    fprior = pdfs.pdf_uniform_nD(par=prior_pdf_pars)
+    fprior = pdf_uniform_nD(par=prior_pdf_pars)
     
     # define proposal distribution
     sigma_prop = (x_max_ini - x_min_ini)/100
     proposal_params = {}
     proposal_params['cov'] = NP.array([[sigma_prop]]) # 2D array!!
-    proposal_pdf = proposal.proposal_normal(par=proposal_params)
+    proposal_pdf = proposal(proposal_params['cov'])
 
     # define initial model:
     m0 = NP.array([-10]) # 1D array!!!
