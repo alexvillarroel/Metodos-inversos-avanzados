@@ -76,6 +76,7 @@ def metropolis(m0, likelihood_fun, pdf_prior, proposal, num_samples, num_burnin,
     if LogOfZero is None:
         LogOfZero = -np.finfo(float).max * (np.finfo(float).eps**2)
     
+
     if save_samples:
         # initialize container to save the samples
         samples = ensemble(Npar= len(m0), Nmodels= num_samples, 
@@ -98,7 +99,8 @@ def metropolis(m0, likelihood_fun, pdf_prior, proposal, num_samples, num_burnin,
         acceptance_criteria = __acceptance_criteria_likelihood
         # define how to compute posterior likelihood
         fpost = _fpost
-        
+
+    
     # evaluate pdf on initial model
     m = m0
     fm_prior = fprior(m)

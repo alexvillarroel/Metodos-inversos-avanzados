@@ -62,10 +62,40 @@ def metropolis_in_parallel_POOL(m0, likelihood_fun, pdf_prior, proposal, num_MCM
          different seed.                
     """
 
-    
-    m = COMPLETAR # this is the final ensemble after Metropolis in Parallel.
+    # Number of models in the initial ensemble.
+    Npar = m0.Npar
+    Nmodels = m0.Nmodels
 
-    acceptance_ratios = COMPLETAR # a 1D numpy array with the acceptance ratio of each
-                                  # MCMC chain.
+    # N burn-in iterations.
+    num_burnin = num_MCMC_steps - 1
+    num_samples = 1
+
+    # Emsemble of models to be returned after the MCMC steps.
+    m = ensemble(Npar, Nmodels, use_log_likelihood = use_log_likelihood)
+
+    acceptance_ratios = NP.zeros(Nmodels)  # Acceptance ratios for each MCMC chain.
+    save_samples = False  # Do not save samples in the ensemble, only the final model
+    beta = m0.beta  # Use the beta value defined in the initial ensemble.
+    LogOfZero = None
+    rng = None
+    seed = None
+
+    # List of arguments for each MCMC chain to be run in parallel.
+    args_list = [ (m0.m_set[i, :], likelihood_fun, pdf_prior, proposal, num_samples, num_burnin, use_log_likelihood, 
+                    save_samples, beta, LogOfZero, rng, seed) for i in range(Nmodels)] # Lista de argumentos por cada modelo
+
+    # Use multiprocessing.Pool to run the Metropolis algorithm in parallel.
+    with Pool(processes=cpu_count()) as pool:
+        
+      results_pool = pool.starmap(metropolis, args_list) # Retorna una lista
+    
+    # Store the results in the ensemble.
+    for i, result in enumerate(results_pool):
+      m.m_set[i, :] = result["m"]
+      m.fprior[i] = result["fprior"]
+      m.like[i] = result["like"]
+      m.f[i] = result["fpost"]
+      acceptance_ratios[i] = result["acceptance_ratio"]
+    
     return m, acceptance_ratios
 

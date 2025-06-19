@@ -43,11 +43,38 @@ def metropolis_in_parallel_SERIAL(m0, likelihood_fun, pdf_prior, proposal, num_M
           in the initial ensemble of models (use beta=1 if not performing TMCMC).
                           
     """
+    # Number of models in the initial ensemble.
+    Npar = m0.Npar 
+    Nmodels = m0.Nmodels
 
-    
-    m = COMPLETAR # this is the final ensemble after Metropolis in Parallel.
+    # N burn-in iterations.
+    num_burnin = num_MCMC_steps - 1
+    num_samples = 1
 
-    acceptance_ratios = COMPLETAR # a 1D numpy array with the acceptance ratio of each
-                                  # MCMC chain.
+    # Emsemble of models to be returned after the MCMC steps.
+    m = ensemble(Npar, Nmodels, use_log_likelihood = use_log_likelihood) 
+    acceptance_ratios = NP.zeros(Nmodels)  # Acceptance ratios for each MCMC chain.
+
+
+    # Loop over the initial ensemble of models.
+    for i in range(Nmodels):
+        # Using the Metropolis algorithm to perform MCMC steps in parallel.
+        # Each model in the initial ensemble is treated as a separate MCMC chain.
+
+        m0_i = m0.m_set[i, :]  # Select the i-th model from the initial ensemble.
+
+        # Run the Metropolis algorithm for the i-th model. 
+        results = metropolis(m0_i, likelihood_fun, pdf_prior, proposal, num_samples, 
+                             num_burnin, use_log_likelihood = use_log_likelihood, 
+                             save_samples = None, beta = 1, LogOfZero = None, 
+                             rng = None, seed = None)
+        
+        # Store the results in the ensemble.
+        m.m_set[i, :] = results["m"]
+        m.fprior[i] = results["fprior"]
+        m.like[i] = results["like"]
+        m.f[i] = results["fpost"]
+        acceptance_ratios[i] = results["acceptance_ratio"]
+
     return m, acceptance_ratios
 
