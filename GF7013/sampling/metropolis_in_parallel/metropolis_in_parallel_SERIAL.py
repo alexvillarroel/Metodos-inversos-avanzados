@@ -13,8 +13,7 @@ COMPLETAR = None
 import numpy as NP
 from ...model_parameters import ensemble
 from ..metropolis import metropolis
-
-def metropolis_in_parallel_SERIAL(m0, likelihood_fun, pdf_prior, proposal, num_MCMC_steps,  
+def metropolis_in_parallel_SERIAL(m0, likelihood_fun, pdf_prior, proposal, num_MCMC_steps,num_burnin=0,  
                use_log_likelihood = True):
     """
     Performs the Metropolis in Parallel Algorithm. THIS IS THE SERIAL VERSION OF THE 
@@ -43,38 +42,37 @@ def metropolis_in_parallel_SERIAL(m0, likelihood_fun, pdf_prior, proposal, num_M
           in the initial ensemble of models (use beta=1 if not performing TMCMC).
                           
     """
-    # Number of models in the initial ensemble.
-    Npar = m0.Npar 
+    Npar = m0.Npar
     Nmodels = m0.Nmodels
+    beta = m0.beta
 
-    # N burn-in iterations.
-    num_burnin = num_MCMC_steps - 1
-    num_samples = 1
+    # Crear un nuevo ensemble para almacenar los modelos finales
+    m = ensemble(Npar=Npar, Nmodels=Nmodels, 
+                use_log_likelihood=use_log_likelihood,
+                beta=beta)
 
-    # Emsemble of models to be returned after the MCMC steps.
-    m = ensemble(Npar, Nmodels, use_log_likelihood = use_log_likelihood) 
-    acceptance_ratios = NP.zeros(Nmodels)  # Acceptance ratios for each MCMC chain.
+    # Vector para almacenar tasas de aceptación
+    acceptance_ratios = NP.zeros(Nmodels)
 
-
-    # Loop over the initial ensemble of models.
     for i in range(Nmodels):
-        # Using the Metropolis algorithm to perform MCMC steps in parallel.
-        # Each model in the initial ensemble is treated as a separate MCMC chain.
+        modelo_inicial = m0.m_set[i, :]
 
-        m0_i = m0.m_set[i, :]  # Select the i-th model from the initial ensemble.
+        res = metropolis(
+            m0=modelo_inicial,
+            likelihood_fun=likelihood_fun,
+            pdf_prior=pdf_prior,
+            proposal=proposal,
+            num_samples=num_MCMC_steps,
+            num_burnin=num_burnin,  # No burn-in en este caso
+            use_log_likelihood=use_log_likelihood,
+            save_samples=False,  # Solo nos interesa el último modelo
+            beta=beta
+        )
 
-        # Run the Metropolis algorithm for the i-th model. 
-        results = metropolis(m0_i, likelihood_fun, pdf_prior, proposal, num_samples, 
-                             num_burnin, use_log_likelihood = use_log_likelihood, 
-                             save_samples = None, beta = 1, LogOfZero = None, 
-                             rng = None, seed = None)
-        
-        # Store the results in the ensemble.
-        m.m_set[i, :] = results["m"]
-        m.fprior[i] = results["fprior"]
-        m.like[i] = results["like"]
-        m.f[i] = results["fpost"]
-        acceptance_ratios[i] = results["acceptance_ratio"]
+        m.m_set[i, :] = res['m']
+        m.fprior[i] = res['fprior']
+        m.like[i] = res['like']
+        m.f[i] = res['fpost']
+        acceptance_ratios[i] = res['acceptance_ratio']
 
     return m, acceptance_ratios
-

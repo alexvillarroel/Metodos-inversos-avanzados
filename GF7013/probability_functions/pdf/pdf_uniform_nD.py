@@ -145,27 +145,16 @@ class pdf_uniform_nD(pdf_base):
         Método inverso para generar muestras uniformes multivariadas.
         Si Ns es None → una muestra.
         Si Ns es entero → matriz (N, Ns).
-        
         """
         if Ns is None:
-            # Initialize sample vector
-            sample = np.zeros(self.N)
-            
-            # Limits and normalization constant
-            ll = self.ll
-            ul = self.ul
-
-            # Realization of an ]0, 1] uniform distribution
-            realization = self.rng.uniform(low = 0.0, high = 1.0, size = self.N)
-
-            # Obtaining the sample through the inverse method
-            sample = ll + (realization * (ul - ll))
-            
+            # Generate a single realization from the uniform distribution
+            realization = self.rng.uniform(low=0.0, high=1.0, size=self.N)
+            # Apply the inverse transform to map to the target uniform distribution
+            sample = self.ll + realization * (self.ul - self.ll)
         else:
-            sample_matrix = np.zeros((self.N, int(Ns)))
-            for i in range(int(Ns)):
-                sample_matrix[:, i] = self._draw(None)
-
-            sample = sample_matrix
-
+            Ns=int(Ns)
+            # Generate Ns realizations simultaneously (vectorized)
+            realization = self.rng.uniform(low=0.0, high=1.0, size=(self.N, Ns))
+            # Apply the inverse transform to all samples using broadcasting
+            sample = self.ll[:, np.newaxis] + realization * (self.ul[:, np.newaxis] - self.ll[:, np.newaxis])
         return sample
