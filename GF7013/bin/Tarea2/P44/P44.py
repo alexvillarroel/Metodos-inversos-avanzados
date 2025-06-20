@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
+from matplotlib.collections import LineCollection
+from GF7013.models.ajuste_ortogonal_recta.recta import calc_xy_pred
 from datos import obtener_datos_elipses
 
 # importar modulos relevantes del paquete GF7013
@@ -39,7 +40,8 @@ if __name__ == '__main__':
                                             sigma_x = desviacion_estandar_x,
                                             sigma_y = desviacion_estandar_y)
 
-    # f prior
+    norm_dobs = np.sqrt((x_obs**2+y_obs**2))
+    #
     min_a = -15
     max_a = 15
 
@@ -101,61 +103,58 @@ if __name__ == '__main__':
     
 
     # Graficando las muestras obtenidas del algoritmo de Metropolis
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.plot(m.m_set[:, 0], m.m_set[:, 1], 'r-', linewidth=0.1, label='Sample Path')
-    ax.scatter(m.m_set[:, 0], m.m_set[:, 1], s=1, c = m.f, cmap='viridis', label='Samples')
-    ax.set_xlabel('a')
-    ax.set_ylabel('theta (grados)')
-    ax.set_title('Muestras del Algoritmo de Metropolis')
-    ax.grid(True)   
-    plt.colorbar(ax.collections[0], ax=ax, label='Log Likelihood')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig('metropolis_samples.png', dpi=300)
-    plt.show()
-
-    # Graficar las muestras
-    fig, ax = plt.subplots(2, 2, figsize=(8, 5))
-    ax[0, 0].hist2d(m.m_set[:, 0], m.m_set[:, 1], bins=50, cmap='Blues', alpha=0.7)
-    ax[0, 0].set_xlabel('a')
-    ax[0, 0].set_ylabel('theta (grados)')
-    ax[0, 0].set_title('Histograma 2D de Muestras de Metropolis')
-    ax[0, 1].hist(m.m_set[:, 0], bins=50, alpha=0.7, color='blue')
-    ax[0, 1].set_xlabel('a')
-    ax[0, 1].set_ylabel('Número de muestras')
-    ax[0, 1].set_title('Histograma de muestras de a')
-    ax[1, 0].hist(m.m_set[:, 1], bins=50, alpha=0.7, color='green')
-    ax[1, 0].set_title('Histograma de muestras de theta')
-    ax[1, 0].set_xlabel('theta (grados)')
-    ax[1, 0].set_ylabel('Número de muestras')
-    fig.delaxes(ax[1, 1])
-    plt.tight_layout()
-    plt.savefig('muestras_metropolis.png', dpi=300)
-    plt.show()
 
 
+    fig, axs = plt.subplots(2, 3, figsize=(15, 8))
 
-    # Graficando la recta obtenida del ajuste a los datos observados
-    # con los parámetros que tienen mayor verosimilitud
-    fpost = m.f
-    max_index = np.argmax(fpost)
+    # 1) Caminata con línea y puntos coloreados por log likelihood
+    axs[0, 0].plot(m.m_set[:, 0], m.m_set[:, 1], 'k-', lw=0.05, alpha=0.3, label='Sample Path')
+    sc = axs[0, 0].scatter(m.m_set[:, 0], m.m_set[:, 1], s=5, c=m.f, cmap='jet', label='Samples')
+    axs[0, 0].set(xlabel='a', ylabel=r'$\theta$', title='Muestras Metropolis')
+    axs[0, 0].grid(True)
+    fig.colorbar(sc, ax=axs[0, 0], label='Log Likelihood')
+    axs[0, 0].legend(loc='lower left')
 
-    sol = m.m_set[max_index, :]
-    a = sol[0]
-    theta = sol[1]
+    # 2) Histograma 2D
+    H, xedges, yedges = np.histogram2d(m.m_set[:, 0], m.m_set[:, 1], bins=50)
+    # Pcolormesh usa los bordes de los bins para hacer la malla
+    X, Y = np.meshgrid(xedges, yedges)
+    # Graficar con pcolormesh
+    pcm = axs[0, 1].pcolormesh(X, Y, H.T, cmap='Blues', shading='auto', alpha=1)
+    #
+    axs[0, 1].set(xlabel='a', ylabel=r'$\theta$ (grados)', title='Mapa de densidad 2D')
+    fig.colorbar(pcm, ax=axs[0, 1], label='Frecuencia')
+
+    # 3) Histograma univariado de 'a'
+    axs[0, 2].hist(m.m_set[:, 0], bins=50, alpha=0.7, color='blue')
+    axs[0, 2].set(xlabel='a', ylabel='N° muestras', title='Histograma de a')
+
+    # 4) Histograma univariado de 'theta'
+    axs[1, 0].hist(m.m_set[:, 1], bins=50, alpha=0.7, color='green')
+    axs[1, 0].set(xlabel=r'$\theta$ (grados)', ylabel='N° muestras', title='Histograma de theta')
+
+    # 5) Ajuste recta y líneas de distancia coloreadas
+    max_index = np.argmax(m.f)
+    a, theta = m.m_set[max_index]
     m_plot = np.array([a, theta])
+    axs[1, 1].errorbar(x_obs, y_obs, xerr=sigma_x, yerr=sigma_y, fmt='.r', capsize=2)
 
-    fig = plt.figure(1)
-    fig.clear()
-    fig.set_size_inches((6, 4))
-    ax = fig.add_subplot(111)
-    recta.plot_recta(ax, *m_plot, x_obs = x_obs, y_obs = y_obs, color_dist='c', color='b') 
-    ax.errorbar(x = x_obs, y=y_obs, xerr=sigma_x, yerr=sigma_y, fmt='.r', capsize = 2)
-    ax.axis('equal')
-    ax.grid('on')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_title('Modelo de recta ajustado a los datos observados')
-    plt.savefig('ajuste_recta.png', dpi=300)
+    recta.plot_recta(axs[1, 1], *m_plot, x_obs=x_obs, y_obs=y_obs, color='b', color_dist=None)
+    x_pred, y_pred, _ = calc_xy_pred(*m_plot, x_obs, y_obs)
+    distancias = np.linalg.norm(np.column_stack((x_pred - x_obs, y_pred - y_obs)), axis=1)
+    segments = [[(x_pred[i], y_pred[i]), (x_obs[i], y_obs[i])] for i in range(len(x_pred))]
+    lc = LineCollection(segments, cmap='jet', linewidths=2, alpha=1)
+    lc.set_array(distancias)
+    axs[1, 1].add_collection(lc)
+    axs[1, 1].set_title('Ajuste recta y datos')
+    cbar = fig.colorbar(lc, ax=axs[1, 1])
+    cbar.set_label('Distancia')
+    axs[1, 1].set_xlabel('X')
+    axs[1, 1].set_ylabel('Y')
+    axs[1, 1].grid(True)
+    # 6) Eliminar último subplot sobrante
+    fig.delaxes(axs[1, 2])
+
+    plt.tight_layout()
+    plt.savefig('resumen_metropolis.png', dpi=300)
     plt.show()
-
